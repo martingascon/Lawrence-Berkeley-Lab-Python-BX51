@@ -1,5 +1,23 @@
 #!/usr/bin/env python
 ######################################## M. Gascon. LBL 2015. ############################
+# USAGE: if you have python installed (included in the PaTH)  
+# open a terminal on linux, mac or windows and execute
+# 
+# > oe_mapping.py <filename.dat> 
+#
+# where filename.dat is a file from Fluorescence (Horiba)
+###################################################################
+ 
+# example of file format:  Positions (in brackets) (first line).
+# wavelength and intensity (2nd line .. last line)
+# Wavelength      (301,386)  (337,386)  (373,386) ...   
+# ...
+# 330     230     50      130     170     200     190     130     130     270 ...
+# 335     160     190     190     160     140     180     160     140     150 ...
+#############################################################################################  
+
+
+# import libraries
 import sys
 import collections
 import numpy as np
@@ -11,6 +29,7 @@ from pandas import *
 from glue import qglue
 from glue.core import Data, DataCollection
 from glue.core.data_factories import load_data
+from glue.qt.glue_application import GlueApplication
 import matplotlib.pyplot as plt
 
 #from glue.core.fitters import BaseFitter1D
@@ -19,10 +38,12 @@ import matplotlib.pyplot as plt
 ## See number of arguments: 1st should be data and 2nd should be an image
 if (len(sys.argv)>1):
 	with open(sys.argv[1], 'r') as my_file:
-    		Data = my_file.readlines()
-elif (len(sys.argv)>2):
+    	       Data = my_file.readlines()
+if (len(sys.argv)>2):
 	with open(sys.argv[2], 'r') as my_image:
-		image = load_data(my_image)
+	       mapping = load_data(my_image) 
+
+ 
 
 ############################################## Read the file 
 ## Variables
@@ -31,9 +52,11 @@ elif (len(sys.argv)>2):
 Data_clean = collections.defaultdict(list)  
 First_Line = 0
 # Vectors with positions 
-Position_Extracted_x = []
-Position_Extracted_y = []
-waves =[]
+Position_x = []
+Position_y = []
+Wavelengths =[]
+
+## Read the data stored in Data
 for line in Data:
 	line = line.rstrip()
 	if not line.strip():
@@ -47,48 +70,62 @@ for line in Data:
              Value_Column = line.split("\t") 
              for Index, Individual_Value in enumerate(Value_Column):
                 if(Individual_Value.split(',')[0]):
-                    Position_Extracted_x.append(int(Individual_Value.split(',')[0]))
-                    Position_Extracted_y.append(int(Individual_Value.split(',')[1]))
+                     Position_x.append(int(Individual_Value.split(',')[0]))
+                     Position_y.append(int(Individual_Value.split(',')[1]))
              First_Line = 1
          else:
              Value_Column = line.split("\t")         
              for Index, Individual_Value in enumerate(Value_Column):
                 if(Index == 0): 
-                 	waves.append(int(Individual_Value))
-			# Background = 0.
+                 	Wavelengths.append(int(Individual_Value))
                 else: 
     			Data_clean[Index].append(float(Individual_Value))
-			# Background = 120.
-
-                #Data_clean[Index].append(float(Individual_Value))
                 Nb_Spectrum = Nb_Spectrum + 1
 my_file.close()
+#print Data_clean
 
 ############################################### 
-
-# indexes is a vector with numbers from 1 to the total number of points
+# indexes is a vector with numbers from 1 to the total Nb of points
 indexes = [i+1 for i in xrange(len(Data_clean))]
 
-# Data Frame with the matrix where columns are the wavelenghts 
-# and the rows are the spectra for each point
-df = DataFrame(index=indexes, columns=waves)
+# df is a Data Frame with columns=wavelenghts, rows=points 
+df = DataFrame(index=indexes, columns=Wavelengths)
 
 # Fill the DataFrame with rows of the Data_clean
-for i in range(len(indexes)):
-	df.loc[i+1] = Data_clean[i+1]
-
-
-
-
-
-
+for ix in range(len(indexes)):
+	df.loc[ix+1] = Data_clean[ix+1]
 #print (df)
-#df.plot(df, x=waves, y=df[1])
+
+#Position will contain the Point Number (index) and the xy positions
+Positions = {'i': indexes, 'x':  Position_x , 'y':  Position_y}
+
+
+
+
+
+
+
+#dc = DataCollection([Positions, df])
+
+# link positional information
+#dc.add_link(LinkSame(image.id['World x: RA---TAN'], catalog.id['RAJ2000']))
+#dc.add_link(LinkSame(image.id['World y: DEC--TAN'], catalog.id['DEJ2000']))
+
+#start Glue
+#app = GlueApplication(dc)
+#app.start()
+
+#load_data('image.fits', factory=gridded_data)
+
+
+#df.plot(df, x=Wavelengths, y=df[1])
 # xyplot(df[1] ~ df[2], data = df)
 #df.plot(style=['o','rx'])
+# dc = DataCollection([image, catalog])
 
-#Positions = {'x': Position_Extracted_x , 'y': Position_Extracted_y}
-#qglue(uv=Positions, xyz=df)
+#qglue(xy=image)
+
+#qglue(iuv=Positions, xyz=df)
 
 #
 #data_t = Data(Positions, label="positions")
@@ -96,20 +133,20 @@ for i in range(len(indexes)):
 
 
 
-#pandas_data = pd.DataFrame({'x': Position_Extracted_x, 'y': Position_Extracted_y, 'z':Data_clean})
+#pandas_data = pd.DataFrame({'x':  Position_x, 'y':  Position_y, 'z':Data_clean})
 #pandas_data = pd.DataFrame({'z':Data_clean})
 
 
 #qglue(uv=Positions, xyz=pandas_data)
 
-fig, axes = plt.subplots(nrows=2, ncols=2)
-fig.set_figheight(6)
-fig.set_figwidth(8)
-df[0].plot(ax=axes[0,0], style='r', label='Series'); axes[0,0].set_title(0)
-df[1].plot(ax=axes[0,1]); axes[0,1].set_title(1)
-df[2].plot(ax=axes[1,0]); axes[1,0].set_title(2)
-df[3].plot(ax=axes[1,1]); axes[1,1].set_title(3)
-fig.tight_layout()
+#fig, axes = plt.subplots(nrows=2, ncols=2)
+#fig.set_figheight(6)
+#fig.set_figwidth(8)
+#df[0].plot(ax=axes[0,0], style='r', label='Series'); axes[0,0].set_title(0)
+#df[1].plot(ax=axes[0,1]); axes[0,1].set_title(1)
+#df[2].plot(ax=axes[1,0]); axes[1,0].set_title(2)
+#df[3].plot(ax=axes[1,1]); axes[1,1].set_title(3)
+#fig.tight_layout()
 
 #xyplot(Data_clean[0],Data_clean[1])
 
@@ -176,8 +213,8 @@ for spectrum in xrange(Nb_Spectrum+1):
 
 #data = Data(xf=[1, 2, 3], label="first dataset")
 
-#x_id = data.add_component(Position_Extracted_x, label = 'X')
-#y_id = data.add_component(Position_Extracted_y, label = 'Y')
+#x_id = data.add_component( Position_x, label = 'X')
+#y_id = data.add_component( Position_y, label = 'Y')
 #emission_data = data.add_component(Data_clean, label = 'Emission_data')
 
 
