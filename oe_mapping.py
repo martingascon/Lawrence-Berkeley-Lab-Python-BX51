@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ######################################## M. Gascon. LBL 2015. ############################
-# USAGE: if you have python installed (included in the PaTH)  
+# USAGE: if you have python and GLUE installed (included in the PATH)  
 # open a terminal on linux, mac or windows and execute
 # 
 # > oe_mapping.py <filename.dat> 
@@ -18,9 +18,10 @@
 
 
 # import libraries
-import sys
+import sys,os
 import collections
 import numpy as np
+import matplotlib.pyplot as plt
 import re
 import pandas as pd
 from pandas import *
@@ -30,20 +31,23 @@ from glue import qglue
 from glue.core import Data, DataCollection
 from glue.core.data_factories import load_data
 from glue.qt.glue_application import GlueApplication
-import matplotlib.pyplot as plt
+from glue.core.link_helpers import LinkSame
+ 
 
 #from glue.core.fitters import BaseFitter1D
 #from glue.config import fit_plugin
+
+    
+
+cwd = os.getcwd() + "/"
 
 ## See number of arguments: 1st should be data and 2nd should be an image
 if (len(sys.argv)>1):
 	with open(sys.argv[1], 'r') as my_file:
     	       Data = my_file.readlines()
 if (len(sys.argv)>2):
-	with open(sys.argv[2], 'r') as my_image:
-	       mapping = load_data(my_image) 
-
- 
+	file = cwd+sys.argv[2]
+	image = load_data(file)
 
 ############################################## Read the file 
 ## Variables
@@ -84,7 +88,8 @@ for line in Data:
 my_file.close()
 #print Data_clean
 
-############################################### 
+############################################### Create the objects to be send to Glue.
+
 # indexes is a vector with numbers from 1 to the total Nb of points
 indexes = [i+1 for i in xrange(len(Data_clean))]
 
@@ -99,13 +104,16 @@ for ix in range(len(indexes)):
 #Position will contain the Point Number (index) and the xy positions
 Positions = {'i': indexes, 'x':  Position_x , 'y':  Position_y}
 
+# transpose to have points as columns
+df = df.T
+
+# send to Glue.
+#qglue(Pos_X_Y=Positions, DataFrame_WL_vs_Point=df, Map=image)
 
 
+ 
 
-
-
-
-#dc = DataCollection([Positions, df])
+dc = DataCollection([Positions, df])
 
 # link positional information
 #dc.add_link(LinkSame(image.id['World x: RA---TAN'], catalog.id['RAJ2000']))
@@ -125,7 +133,7 @@ Positions = {'i': indexes, 'x':  Position_x , 'y':  Position_y}
 
 #qglue(xy=image)
 
-#qglue(iuv=Positions, xyz=df)
+
 
 #
 #data_t = Data(Positions, label="positions")
@@ -135,9 +143,7 @@ Positions = {'i': indexes, 'x':  Position_x , 'y':  Position_y}
 
 #pandas_data = pd.DataFrame({'x':  Position_x, 'y':  Position_y, 'z':Data_clean})
 #pandas_data = pd.DataFrame({'z':Data_clean})
-
-
-#qglue(uv=Positions, xyz=pandas_data)
+ 
 
 #fig, axes = plt.subplots(nrows=2, ncols=2)
 #fig.set_figheight(6)
